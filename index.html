@@ -646,23 +646,33 @@
 
     setSubmitting(true);
 
-    // Build a FormData payload from every named field on the form.
-    // The n8n webhook accepts multipart/form-data, which is what
-    // FormData produces natively — text fields land as their labels,
-    // file uploads as their labels.
-    var payload = new FormData(form);
+    // Build a clean JSON payload from every named field on the form.
+    // We send JSON (not multipart/form-data) because:
+    //   1. n8n's webhook reads JSON bodies natively (no parser to fail)
+    //   2. Vercel's proxy forwards JSON as-is without any boundary tricks
+    //   3. Easier to debug — the payload is human-readable in the network tab
+    // Files are skipped for now; if photo upload is needed later we'll
+    // base64-encode each file into the same JSON object.
+    var payload = {};
+    var formData = new FormData(form);
+    formData.forEach(function (value, key) {
+      // Skip file inputs in JSON mode (handled separately if needed)
+      if (value instanceof File) return;
+      payload[key] = value;
+    });
 
     fetch(WEBHOOK_URL, {
       method: 'POST',
-      body: payload
-      // Note: do NOT set Content-Type manually — the browser sets the
-      // correct multipart boundary automatically when body is FormData.
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     })
       .then(function (res) {
         if (!res.ok) {
-          throw new Error('Server responded ' + res.status);
+          return res.text().then(function (body) {
+            throw new Error('Server responded ' + res.status + ': ' + body.slice(0, 300));
+          });
         }
-        return res.text(); // n8n may return text or JSON; we don't need to parse
+        return res.text();
       })
       .then(function () {
         showSuccess();
