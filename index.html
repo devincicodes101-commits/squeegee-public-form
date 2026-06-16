@@ -575,9 +575,11 @@
 
   // ============================================================
   //   CHANGE NOTHING ABOVE THIS LINE.
-  //   The webhook URL below is your live n8n production endpoint.
+  //   Posts to a Vercel API proxy (api/submit) which forwards to
+  //   the n8n webhook server-side. This avoids browser CORS issues
+  //   entirely and gives us server logs to debug delivery.
   // ============================================================
-  var WEBHOOK_URL = 'https://hu6j4d9e.rcld.app/webhook/0dc30588-9b5e-401e-b2c2-062d8c14831a';
+  var WEBHOOK_URL = '/api/submit';
 
   var form        = document.getElementById('ss-form');
   var btn         = document.getElementById('ss-submit-btn');
