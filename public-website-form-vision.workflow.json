@@ -1,0 +1,447 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// === 1) Normalize incoming form fields ===\n// Website form posts multipart/form-data; text fields can land at\n// root or under .body — handle both. Output uses the exact labels\n// the existing Pricing Engine expects.\nconst raw = $input.first().json;\nconst body = (raw && raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst toNum = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };\n\nreturn [{\n  json: {\n    'Full Name':                    String(body['Full Name'] || '').trim(),\n    'Email':                        String(body['Email'] || '').trim(),\n    'Phone Number':                 String(body['Phone Number'] || '').trim(),\n    'ZIP Code':                     toNum(body['ZIP Code']),\n    'Property Address (optional)':  String(body['Property Address (optional)'] || '').trim(),\n    'Property Type':                String(body['Property Type'] || '').trim(),\n    'Service':                      String(body['Service'] || '').trim(),\n    'Quantity (panes / sq ft / linear ft / panels / loads — depends on service)':\n                                    toNum(body['Quantity (panes / sq ft / linear ft / panels / loads — depends on service)']),\n    'Condition':                    String(body['Condition'] || '').trim(),\n    'Access':                       String(body['Access'] || '').trim(),\n    'Urgency':                      String(body['Urgency'] || '').trim(),\n    'LA Logistics':                 String(body['LA Logistics'] || '').trim(),\n    'Recurring':                    String(body['Recurring'] || '').trim(),\n    'Project Notes (optional)':     String(body['Project Notes (optional)'] || '').trim(),\n    'Photos (optional — upload for a more accurate estimate)': []\n  }\n}];"
+      },
+      "id": "a13c67ef-9abd-48b4-9539-a9964fddcd57",
+      "name": "Normalize Form Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [9440, 9104]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === 2) Pull image files out of the webhook item's binary bag ===\n// Convert each to a data URL OpenAI's Vision API accepts.\nconst webhookItem = $('Webhook').first();\nconst binary = webhookItem.binary || {};\nconst formData = $input.first().json;\n\nconst photos = [];\nfor (const key of Object.keys(binary)) {\n  const b = binary[key];\n  if (!b || !b.mimeType || !b.mimeType.startsWith('image/')) continue;\n  photos.push({\n    type: 'image_url',\n    image_url: {\n      url: `data:${b.mimeType};base64,${b.data}`,\n      detail: 'low'\n    }\n  });\n}\n\nreturn [{\n  json: {\n    ...formData,\n    has_photos: photos.length > 0,\n    photo_count: photos.length,\n    photos_for_ai: photos\n  }\n}];"
+      },
+      "id": "7f0012a2-b1b0-4996-9c3e-afeb6d5ece96",
+      "name": "Extract Photos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [9584, 9104]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.has_photos }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "68a42c3d-ee6b-49fa-b762-63f22811bdaa",
+      "name": "Has Photos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [9728, 9104]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === 3) Build OpenAI Vision request — all photos in one call ===\nconst data = $input.first().json;\n\nconst systemPrompt = `You are a property assessment assistant for Squeegee Squad LA, a Los Angeles cleaning services company. You analyze customer-submitted photos and return ONLY a JSON object matching this exact schema:\n\n{\n  \"quantity_estimate\": <number or null — panes, sq ft, panels, linear ft of the implied unit; null if undetectable>,\n  \"quantity_unit\": \"<panes | sqft | panels | linear ft | empty string>\",\n  \"stories\": <integer 1-10 or null>,\n  \"condition\": \"<Standard | Moderate buildup/staining | Heavy buildup/staining | Severe/restoration | empty string>\",\n  \"access\": \"<Easy | Moderate | Difficult | Height/Lift/Rope | empty string>\",\n  \"risk_factors\": [\"short string per visible risk\"],\n  \"confidence\": \"<High | Medium | Low>\",\n  \"reasoning\": \"<one sentence — what you saw>\"\n}\n\nGUIDELINES:\n- Use \"Standard\" when surface looks clean.\n- Use \"Moderate buildup/staining\" for visible dirt, water spots, mild grime.\n- Use \"Heavy buildup/staining\" for significant grime, staining, mold, or residue.\n- Use \"Severe/restoration\" ONLY for caked-on damage or restoration work.\n- \"Height/Lift/Rope\" access is for 4+ stories or any high-rise.\n- Be CONSERVATIVE with quantity — under-estimate rather than guess high.\n- Confidence \"Low\" if photos are blurry, dark, partial.\n- Return ONLY the JSON. No prose, no markdown fences.`;\n\nconst userText = `The customer selected service: \"${data['Service']}\". Property Type: \"${data['Property Type']}\". Please analyze the ${data.photo_count} attached photo(s).`;\n\nconst openaiPayload = {\n  model: 'gpt-4o',\n  response_format: { type: 'json_object' },\n  max_tokens: 600,\n  temperature: 0.2,\n  messages: [\n    { role: 'system', content: systemPrompt },\n    {\n      role: 'user',\n      content: [\n        { type: 'text', text: userText },\n        ...data.photos_for_ai\n      ]\n    }\n  ]\n};\n\nreturn [{ json: { ...data, openai_payload: openaiPayload } }];"
+      },
+      "id": "4bc9c372-112f-4725-a0d6-5f39bfca6947",
+      "name": "Prepare OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [9888, 8912]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.openai_payload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d3234f06-818a-4ba5-a287-f87b556386a2",
+      "name": "OpenAI Vision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [10048, 8912],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "REPLACE_ME"
+        },
+        "openAiApi": {
+          "id": "REPLACE_ME",
+          "name": "REPLACE_ME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// === 4) Parse AI response and ENRICH form ===\n// Rule: only fill BLANK fields — never override what the customer typed.\n// Stash AI metadata so the dashboard log + team can audit AI suggestions.\nconst formData = $('Prepare OpenAI Request').first().json;\nconst aiResp = $input.first().json;\n\nlet aiResult = {};\ntry {\n  const content = aiResp?.choices?.[0]?.message?.content || '{}';\n  aiResult = JSON.parse(content);\n} catch (e) {\n  aiResult = { error: 'Failed to parse AI response' };\n}\n\nconst enriched = { ...formData };\n\nif (!enriched['Condition'] && aiResult.condition) {\n  enriched['Condition'] = aiResult.condition;\n  enriched.ai_filled_condition = true;\n}\nif (!enriched['Access'] && aiResult.access) {\n  enriched['Access'] = aiResult.access;\n  enriched.ai_filled_access = true;\n}\nconst qtyKey = 'Quantity (panes / sq ft / linear ft / panels / loads — depends on service)';\nif ((!enriched[qtyKey] || enriched[qtyKey] === 0) && aiResult.quantity_estimate) {\n  enriched[qtyKey] = aiResult.quantity_estimate;\n  enriched.ai_filled_quantity = true;\n}\n\n// Photos flag drives the §10 confidence boost downstream.\nenriched['Photos (optional — upload for a more accurate estimate)'] = ['photo'];\n\n// Stash AI metadata for dashboard logging.\nenriched.ai_analysis_done = true;\nenriched.ai_reasoning = aiResult.reasoning || '';\nenriched.ai_risk_factors = Array.isArray(aiResult.risk_factors) ? aiResult.risk_factors.join('; ') : '';\nenriched.ai_confidence = aiResult.confidence || '';\nenriched.ai_quantity_estimate = aiResult.quantity_estimate || '';\nenriched.ai_stories = aiResult.stories || '';\n\nreturn [{ json: enriched }];"
+      },
+      "id": "cd0d1177-a3e2-4cd9-b06d-fa6c84f585cb",
+      "name": "Parse AI & Enrich Form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [10208, 8896]
+    },
+    {
+      "parameters": {
+        "jsCode": "// No-photos path: stamp the AI metadata fields with empties so the\n// downstream Pricing Engine + dashboard log have a consistent shape.\nconst data = $input.first().json;\nreturn [{\n  json: {\n    ...data,\n    ai_analysis_done: false,\n    ai_reasoning: '',\n    ai_risk_factors: '',\n    ai_confidence: '',\n    ai_quantity_estimate: '',\n    ai_stories: ''\n  }\n}];"
+      },
+      "id": "f42d0cc8-c5b5-47c0-9ddb-34c218ba350d",
+      "name": "No Photos Pass-Through",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [9856, 9312]
+    },
+    {
+      "parameters": {},
+      "id": "c9a55b19-d512-4664-82e8-a36dcbc842f4",
+      "name": "Merge Photo Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [10384, 9104]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, estimate: $json.customer_copy, leadId: $json.leadId, range: { low: $json.estimate_low, high: $json.estimate_high }, confidence: $json.confidence, ai_used: $json.ai_analysis_done === 'YES', ai_reasoning: $json.ai_reasoning }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "7352cdf3-1e4a-42dd-9d68-9d980099f9a7",
+      "name": "Respond JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [11472, 9104]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0dc30588-9b5e-401e-b2c2-062d8c14831a",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data",
+          "rawBody": false
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [9280, 9104],
+      "id": "fa73b4cd-6d83-4c5c-a446-dd35476c2834",
+      "name": "Webhook",
+      "webhookId": "0dc30588-9b5e-401e-b2c2-062d8c14831a"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 835019019,
+          "mode": "list",
+          "cachedResultName": "Developer Pricing Rules",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=835019019"
+        },
+        "options": {}
+      },
+      "id": "76e51b2c-abd4-49d9-afa9-d2531e337611",
+      "name": "Get Pricing Rule",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [10576, 8528],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 381461511,
+          "mode": "list",
+          "cachedResultName": "Multipliers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=381461511"
+        },
+        "options": {}
+      },
+      "id": "cc748f85-54a1-45f6-a70e-ddff915d1b68",
+      "name": "Get Multipliers",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [10576, 8720],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 483345357,
+          "mode": "list",
+          "cachedResultName": "Territory Modifiers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=483345357"
+        },
+        "options": {}
+      },
+      "id": "e0df25e4-ac83-4046-9796-3120e8edad7e",
+      "name": "Get Territory Modifiers",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [10576, 8912],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1475265773,
+          "mode": "list",
+          "cachedResultName": "Customer Copy",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=1475265773"
+        },
+        "options": {}
+      },
+      "id": "bea26a4f-91d1-47d4-af43-d0e935097fa0",
+      "name": "Get Customer Copy",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [10576, 9104],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2067363701,
+          "mode": "list",
+          "cachedResultName": "Bundle Logic",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=2067363701"
+        },
+        "options": {}
+      },
+      "id": "ebaae44b-38cf-4a1f-a28f-a70d923a79c7",
+      "name": "Get Bundle Logic",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [10576, 9296],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 46497874,
+          "mode": "list",
+          "cachedResultName": "Scoring Rules",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=46497874"
+        },
+        "options": {}
+      },
+      "id": "51c144b4-2ebb-4d1a-b363-ff4d04506fa3",
+      "name": "Get Scoring Rules",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [10576, 9488],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1718521174,
+          "mode": "list",
+          "cachedResultName": "Smart Defaults",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=1718521174"
+        },
+        "options": {}
+      },
+      "id": "4ee708a8-13bb-4889-abb7-b93818f017f2",
+      "name": "Get Smart Defaults",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [10576, 9680],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    },
+    {
+      "parameters": { "numberInputs": 7 },
+      "id": "6a117b4f-1aea-47ef-8d2c-273d92eaa1d8",
+      "name": "Merge Sheets Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [10832, 9040]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === Squeegee Squad LA — Pricing Engine (Public Website + Vision) ===\n// PATCH: reads from `Merge Photo Branches` instead of the missing\n// `Public Website Form` node. Also pulls AI metadata through to the\n// dashboard log + customer copy.\nconst form = $('Merge Photo Branches').first().json;\nconst allRules = $('Get Pricing Rule').all().map(i => i.json);\nconst rule = allRules.find(r => String(r['Service']).trim() === String(form['Service']).trim());\nconst multipliers = $('Get Multipliers').all().map(i => i.json);\nconst territories = $('Get Territory Modifiers').all().map(i => i.json);\nconst smartDefaultsRows = $('Get Smart Defaults').all().map(i => i.json);\nconst sdRow = smartDefaultsRows.find(r => String(r['Property Type']).trim() === String(form['Property Type']).trim()) || {};\nconst defaultedFields = [];\nconst resolve = (formKey, sdKey) => {\n  const raw = form[formKey];\n  const v = (raw === undefined || raw === null) ? '' : String(raw).trim();\n  if (v) return v;\n  defaultedFields.push(sdKey);\n  return sdRow[sdKey] ? String(sdRow[sdKey]).trim() : '';\n};\nconst resolvedCondition = resolve('Condition', 'Condition');\nconst resolvedAccess    = resolve('Access', 'Access');\nconst resolvedUrgency   = resolve('Urgency', 'Urgency');\nconst resolvedLogistics = resolve('LA Logistics', 'LA Logistics');\nconst resolvedRecurring = resolve('Recurring', 'Recurring');\nconst scoringRows = $('Get Scoring Rules').all().map(i => i.json);\n\nif (!rule) {\n  throw new Error(`No pricing rule found for service: ${form['Service']}. Check the Developer Pricing Rules tab.`);\n}\n\nconst lookupMult = (category, option) => {\n  const row = multipliers.find(r =>\n    String(r['Multiplier Category']).trim() === category &&\n    String(r['Option']).trim() === String(option).trim()\n  );\n  return row ? parseFloat(row['Multiplier']) : 1;\n};\n\nconst min = parseFloat(rule['Minimum']) || 0;\nconst lowRate = parseFloat(rule['Low Unit Rate']) || 0;\nconst highRate = parseFloat(rule['High Unit Rate']) || 0;\nconst qty = parseFloat(form['Quantity (panes / sq ft / linear ft / panels / loads — depends on service)']) || 0;\n\nconst baseLow = Math.max(min, qty * lowRate);\nconst baseHigh = Math.max(min, qty * highRate);\n\nconst condMult   = lookupMult('Condition', resolvedCondition);\nconst propMult   = lookupMult('Property Type', form['Property Type']);\nconst accessMult = lookupMult('Access', resolvedAccess);\nconst urgMult    = lookupMult('Urgency', resolvedUrgency);\nconst logMult    = lookupMult('LA Logistics', resolvedLogistics);\nconst recMult    = lookupMult('Recurring', resolvedRecurring);\n\nconst terrRow = territories.find(r => String(r['ZIP']).trim() === String(form['ZIP Code']).trim());\nconst territoryMult = terrRow ? parseFloat(terrRow['Modifier']) : 1;\n\nconst combined = condMult * propMult * accessMult * urgMult * logMult * recMult * territoryMult;\nconst passThrough = 0;\n\nconst rangeWidthRaw = String(rule['Range Width'] || '').trim();\nconst rangeWidthMatch = rangeWidthRaw.match(/(\\d+(?:\\.\\d+)?)%?\\s*[-–—]\\s*(\\d+(?:\\.\\d+)?)%?/);\nlet scaledLow, scaledHigh, widthUsedPct = null;\nif (rangeWidthMatch) {\n  const widthLow = parseFloat(rangeWidthMatch[1]) / 100;\n  const widthHigh = parseFloat(rangeWidthMatch[2]) / 100;\n  widthUsedPct = (widthLow + widthHigh) / 2;\n  const midBase = (baseLow + baseHigh) / 2;\n  const half = widthUsedPct / 2;\n  scaledLow  = midBase * (1 - half);\n  scaledHigh = midBase * (1 + half);\n} else {\n  scaledLow  = baseLow;\n  scaledHigh = baseHigh;\n}\n\nconst estLowInitial = Math.round(scaledLow * combined + passThrough);\nconst estHighInitial = Math.round(scaledHigh * combined + passThrough);\n\nconst alwaysLowServices = [\n  'Parking Garage Deep Cleaning', 'Trash Chute Cleaning', 'Post-Construction Cleanup',\n  'Warehouse Cleaning', 'High-Access/Lift Window Cleaning', 'Large Junk Removal',\n  'Eviction / Turnover Cleanouts', 'Property Cleanouts'\n];\nconst photos = form['Photos (optional — upload for a more accurate estimate)'];\nconst hasPhotos = Array.isArray(photos) ? photos.length > 0 : !!photos;\nconst notesText = String(form['Project Notes (optional)'] || '').trim();\nconst hasNotes = notesText.length > 0;\nconst hasEvidence = hasPhotos || hasNotes;\nconst isComplexJob = alwaysLowServices.includes(form['Service']) ||\n  resolvedCondition === 'Severe/restoration' ||\n  resolvedAccess === 'Height/Lift/Rope' ||\n  ['Water Runoff/Containment', 'Special Handling'].includes(resolvedLogistics);\n\nlet estLow = estLowInitial;\nlet estHigh = estHighInitial;\nif (hasEvidence && !isComplexJob) {\n  estLow = Math.round(estLowInitial * 1.05);\n  estHigh = Math.round(estHighInitial * 0.95);\n}\n\nconst multiplierBreakdown = [];\nif (condMult !== 1)      multiplierBreakdown.push(`${condMult}× cond`);\nif (propMult !== 1)      multiplierBreakdown.push(`${propMult}× property`);\nif (accessMult !== 1)    multiplierBreakdown.push(`${accessMult}× access`);\nif (urgMult !== 1)       multiplierBreakdown.push(`${urgMult}× urgency`);\nif (logMult !== 1)       multiplierBreakdown.push(`${logMult}× logistics`);\nif (recMult !== 1)       multiplierBreakdown.push(`${recMult}× recurring`);\nif (territoryMult !== 1) multiplierBreakdown.push(`${territoryMult}× territory`);\nconst multiplierDetail = multiplierBreakdown.length ? ` (${multiplierBreakdown.join(' × ')})` : '';\nconst passText = passThrough ? ` + $${passThrough} pass-through` : '';\nconst rangeWidthNote = (widthUsedPct !== null) ? ` [width ${Math.round(widthUsedPct*100)}% from sheet \"${rangeWidthRaw}\"]` : '';\nlet rangeMath = `Base $${Math.round(baseLow)}-$${Math.round(baseHigh)}${rangeWidthNote} × ${combined.toFixed(3)}x${multiplierDetail}${passText} = $${estLowInitial}-$${estHighInitial}`;\nif (hasEvidence && !isComplexJob) {\n  const evidenceLabel = hasPhotos && hasNotes ? 'photos+notes' : (hasPhotos ? 'photos' : 'notes');\n  rangeMath += ` → ${evidenceLabel} tightened to $${estLow}-$${estHigh}`;\n}\n\nconst subPayoutLow = Math.round(estLow * 0.45);\nconst subPayoutHigh = Math.round(estHigh * 0.45);\nconst grossLow = estLow - subPayoutLow;\nconst grossHigh = estHigh - subPayoutHigh;\n\nconst MARGIN_THRESHOLD = 0.35;\nconst effectiveGrossLow = grossLow - passThrough;\nconst effectiveMarginRatio = effectiveGrossLow / Math.max(estLow, 1);\nconst lowMargin = effectiveMarginRatio < MARGIN_THRESHOLD;\n\nlet confidence = rule['Default Confidence'] || 'Medium';\nif (resolvedCondition === 'Severe/restoration') confidence = 'Low';\nif (resolvedAccess === 'Height/Lift/Rope') confidence = 'Low';\nif (alwaysLowServices.includes(form['Service'])) confidence = 'Low';\nif (confidence === 'High') {\n  const softMediumTriggers = (\n    resolvedCondition === 'Moderate buildup/staining' ||\n    resolvedCondition === 'Heavy buildup/staining'    ||\n    form['Property Type'] === 'Commercial'            ||\n    resolvedAccess === 'Difficult'\n  );\n  if (softMediumTriggers) confidence = 'Medium';\n}\nif (hasEvidence && confidence === 'Medium' && !isComplexJob) confidence = 'High';\nif (!hasEvidence && isComplexJob) {\n  if (confidence === 'High') confidence = 'Medium';\n  else if (confidence === 'Medium') confidence = 'Low';\n}\nif (defaultedFields.length >= 2) {\n  if (confidence === 'High') confidence = 'Medium';\n  else if (confidence === 'Medium') confidence = 'Low';\n}\n\nconst getThreshold = (key) => {\n  const row = scoringRows.find(r => String(r['Type']).trim() === 'Threshold' && String(r['Key']).trim() === key);\n  return row ? parseFloat(row['Value']) : null;\n};\nconst tLow = getThreshold('Low Priority Max') ?? 300;\nconst tStd = getThreshold('Standard Max') ?? 750;\nconst tGood = getThreshold('Good Max') ?? 2500;\nconst tHigh = getThreshold('High Value Max') ?? 7500;\nconst label = estLow < tLow ? 'Low Priority' :\n              estLow < tStd ? 'Standard'     :\n              estLow < tGood ? 'Good'        :\n              estLow < tHigh ? 'High Value'  : 'Priority';\n\nconst strategicTypes = scoringRows\n  .filter(r => String(r['Type']).trim() === 'Strategic' && String(r['Value']).trim().toUpperCase() === 'YES')\n  .map(r => String(r['Key']).trim());\nconst strategicAccount = strategicTypes.includes(form['Property Type']);\n\nconst recurringMap = {};\nscoringRows.filter(r => String(r['Type']).trim() === 'Recurring').forEach(r => {\n  recurringMap[String(r['Key']).trim()] = String(r['Value']).trim();\n});\nconst serviceRecurringTier = recurringMap[form['Service']];\nlet recurringScore;\nif (strategicAccount && serviceRecurringTier === 'Very High') recurringScore = 'Very High';\nelse if (strategicAccount) recurringScore = 'High';\nelse if (serviceRecurringTier === 'Medium') recurringScore = 'Medium';\nelse recurringScore = 'Low';\n\nlet reviewLogic = String(rule['Review Logic'] || '');\nconst reviewFlag = confidence === 'Low' || /always review/i.test(reviewLogic) || lowMargin;\nif (lowMargin) {\n  const pct = Math.round(effectiveMarginRatio * 100);\n  reviewLogic = (reviewLogic ? reviewLogic + '; ' : '') + `LOW MARGIN — effective gross ${pct}% (threshold ${Math.round(MARGIN_THRESHOLD * 100)}%)`;\n}\n\nconst copyRows = $('Get Customer Copy').all().map(i => i.json);\nconst copyRow = copyRows.find(r => String(r['Key']).trim() === 'public');\nconst customerCopyTemplate = copyRow ? String(copyRow['Template']) :\n  `Hi ${form['Full Name']}, your preliminary estimate range is $${estLow.toLocaleString()} - $${estHigh.toLocaleString()}.`;\nconst customerCopy = customerCopyTemplate\n  .replace('{LOW}', estLow.toLocaleString())\n  .replace('{HIGH}', estHigh.toLocaleString())\n  .replace('{NAME}', form['Full Name'] || '');\n\nconst bundleRows = $('Get Bundle Logic').all().map(i => i.json);\nconst bundleCategoryMap = {\n  'Residential Window Cleaning':       'Window Cleaning',\n  'Large/Luxury Residential Windows':  'Window Cleaning',\n  'Dumpster Pad Sanitization':         'Dumpster Pad',\n  'Trash Area Cleaning':               'Dumpster Pad',\n  'Post-Construction Cleanup':         'Post-Construction',\n  'Parking Garage Deep Cleaning':      'Parking Garage'\n};\nconst bundleCategory = bundleCategoryMap[form['Service']];\nlet bundleRecommendation = '';\nif (bundleCategory) {\n  const findTier = (tier) => bundleRows.find(r =>\n    String(r['Service']).trim() === bundleCategory &&\n    String(r['Package Tier']).trim() === tier\n  );\n  const g = findTier('Good'), b = findTier('Better'), best = findTier('Best');\n  const parts = [];\n  if (g)    parts.push(`• Good: ${g['Description']} (${g['Example Range']})`);\n  if (b)    parts.push(`• Better: ${b['Description']} (${b['Example Range']})`);\n  if (best) parts.push(`• Best: ${best['Description']} (${best['Example Range']})`);\n  if (parts.length) {\n    bundleRecommendation = '\\n\\n---\\n**RECOMMENDED PACKAGES**\\n' + parts.join('\\n') + '\\n\\nAsk about upgrading for better value.';\n  }\n}\n\nreturn [{\n  json: {\n    leadId: `SS-${Date.now()}`,\n    timestamp: new Date().toISOString(),\n    mode: form.ai_analysis_done ? 'Public Website + Vision' : 'Public Website',\n\n    customer_name:  form['Full Name'],\n    customer_email: form['Email'],\n    customer_phone: form['Phone Number'],\n    lead_source:    'website',\n    zip:            form['ZIP Code'],\n    address:        form['Property Address (optional)'],\n    property_type:  form['Property Type'],\n    service:        form['Service'],\n    quantity:       qty,\n    condition:      resolvedCondition,\n    access:         resolvedAccess,\n    urgency:        resolvedUrgency,\n    la_logistics:   resolvedLogistics,\n    recurring:      resolvedRecurring,\n    pass_through:   passThrough,\n    photos_uploaded: hasPhotos ? 'Yes' : 'No',\n    notes_provided:  hasNotes ? 'Yes' : 'No',\n    notes:          form['Project Notes (optional)'] || '',\n\n    ai_analysis_done:    form.ai_analysis_done ? 'YES' : 'NO',\n    ai_reasoning:        form.ai_reasoning || '',\n    ai_risk_factors:     form.ai_risk_factors || '',\n    ai_confidence:       form.ai_confidence || '',\n    ai_filled_condition: form.ai_filled_condition ? 'YES' : 'NO',\n    ai_filled_access:    form.ai_filled_access ? 'YES' : 'NO',\n    ai_filled_quantity:  form.ai_filled_quantity ? 'YES' : 'NO',\n\n    estimate_low: estLow,\n    estimate_high: estHigh,\n    sub_payout_low: subPayoutLow,\n    sub_payout_high: subPayoutHigh,\n    gross_low: grossLow,\n    gross_high: grossHigh,\n    confidence,\n    priority_label: label,\n    strategic_account: strategicAccount ? 'YES' : 'NO',\n    recurring_score: recurringScore,\n    review_flag: reviewFlag ? 'YES' : 'NO',\n    review_logic: reviewLogic,\n    defaulted_fields: defaultedFields.join(', ') || 'None',\n    defaulted_count: defaultedFields.length,\n    customer_copy: customerCopy,\n    bundle_recommendation: bundleRecommendation,\n    range_math: rangeMath\n  }\n}];"
+      },
+      "id": "c860c690-9593-4fdf-ad82-8551e2dd91ad",
+      "name": "Pricing Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [11056, 9104],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1017114856,
+          "mode": "list",
+          "cachedResultName": "Dashboard Template",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DfbkAvbWMvQJFUr4_i5TlGuGZImbamxF4GNSh5VNa-Q/edit#gid=1017114856"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Date": "={{ $json.timestamp }}",
+            "Lead Source": "={{ $json.lead_source }}",
+            "ZIP": "={{ $json.zip }}",
+            "Service": "={{ $json.service }}",
+            "Mode": "={{ $json.mode }}",
+            "Property Type": "={{ $json.property_type }}",
+            "Quantity": "={{ $json.quantity }}",
+            "Estimate Low": "={{ $json.estimate_low }}",
+            "Estimate High": "={{ $json.estimate_high }}",
+            "Confidence": "={{ $json.confidence }}",
+            "Review Flag": "={{ $json.review_flag }}",
+            "Sub Payout": "={{ $json.sub_payout_low }} - {{ $json.sub_payout_high }}",
+            "Company Gross": "={{ $json.gross_low }} - {{ $json.gross_high }}",
+            "Pass-through Costs": "={{ $json.pass_through }}",
+            "Photos Uploaded": "={{ $json.photos_uploaded }}",
+            "Won/Lost/Pending": "Pending",
+            "Recurring Opportunity": "={{ $json.recurring_score }}",
+            "Range Math": "={{ $json.range_math }}",
+            "Notes": "={{ $json.customer_name }} | {{ $json.customer_email }} | {{ $json.customer_phone }} | AI: {{ $json.ai_analysis_done }} ({{ $json.ai_reasoning }}) | {{ $json.notes }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "37ddcb1e-cc57-4e88-80bf-5d8e8d2acb1f",
+      "name": "Log to Dashboard",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [11296, 9104],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "REPLACE_ME" }
+      }
+    }
+  ],
+  "connections": {
+    "Normalize Form Inputs": { "main": [[{ "node": "Extract Photos", "type": "main", "index": 0 }]] },
+    "Extract Photos": { "main": [[{ "node": "Has Photos?", "type": "main", "index": 0 }]] },
+    "Has Photos?": {
+      "main": [
+        [{ "node": "Prepare OpenAI Request", "type": "main", "index": 0 }],
+        [{ "node": "No Photos Pass-Through", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare OpenAI Request": { "main": [[{ "node": "OpenAI Vision", "type": "main", "index": 0 }]] },
+    "OpenAI Vision": { "main": [[{ "node": "Parse AI & Enrich Form", "type": "main", "index": 0 }]] },
+    "Parse AI & Enrich Form": { "main": [[{ "node": "Merge Photo Branches", "type": "main", "index": 0 }]] },
+    "No Photos Pass-Through": { "main": [[{ "node": "Merge Photo Branches", "type": "main", "index": 1 }]] },
+    "Merge Photo Branches": {
+      "main": [[
+        { "node": "Get Pricing Rule", "type": "main", "index": 0 },
+        { "node": "Get Multipliers", "type": "main", "index": 0 },
+        { "node": "Get Territory Modifiers", "type": "main", "index": 0 },
+        { "node": "Get Customer Copy", "type": "main", "index": 0 },
+        { "node": "Get Bundle Logic", "type": "main", "index": 0 },
+        { "node": "Get Scoring Rules", "type": "main", "index": 0 },
+        { "node": "Get Smart Defaults", "type": "main", "index": 0 }
+      ]]
+    },
+    "Webhook": { "main": [[{ "node": "Normalize Form Inputs", "type": "main", "index": 0 }]] },
+    "Get Pricing Rule": { "main": [[{ "node": "Merge Sheets Data", "type": "main", "index": 0 }]] },
+    "Get Multipliers": { "main": [[{ "node": "Merge Sheets Data", "type": "main", "index": 1 }]] },
+    "Get Territory Modifiers": { "main": [[{ "node": "Merge Sheets Data", "type": "main", "index": 2 }]] },
+    "Get Customer Copy": { "main": [[{ "node": "Merge Sheets Data", "type": "main", "index": 3 }]] },
+    "Get Bundle Logic": { "main": [[{ "node": "Merge Sheets Data", "type": "main", "index": 4 }]] },
+    "Get Scoring Rules": { "main": [[{ "node": "Merge Sheets Data", "type": "main", "index": 5 }]] },
+    "Get Smart Defaults": { "main": [[{ "node": "Merge Sheets Data", "type": "main", "index": 6 }]] },
+    "Merge Sheets Data": { "main": [[{ "node": "Pricing Engine", "type": "main", "index": 0 }]] },
+    "Pricing Engine": { "main": [[{ "node": "Log to Dashboard", "type": "main", "index": 0 }]] },
+    "Log to Dashboard": { "main": [[{ "node": "Respond JSON", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "644888e0e18ca2788ac90909622acd6f0669819bd495a684a5fe1ced3a53c29a"
+  }
+}
