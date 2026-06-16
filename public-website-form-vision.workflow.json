@@ -110,7 +110,10 @@
       "position": [9856, 9312]
     },
     {
-      "parameters": {},
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
       "id": "c9a55b19-d512-4664-82e8-a36dcbc842f4",
       "name": "Merge Photo Branches",
       "type": "n8n-nodes-base.merge",
