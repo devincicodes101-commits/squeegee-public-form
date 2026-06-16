@@ -1,70 +1,430 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Get Your Free Squeegee Squad LA Estimate</title>
-    <link rel="stylesheet" href="./style.css" />
-  </head>
-  <body>
-    <main class="container">
-      <header class="hero">
-        <h1>Get Your Free Estimate</h1>
-        <p>Tell us about your project. We'll send you a preliminary estimate range right away.</p>
-      </header>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get Your Free Estimate — Squeegee Squad LA</title>
 
-      <form id="estimate-form" novalidate>
-        <fieldset>
-          <legend>Contact</legend>
+<!--
+  ========================================================================
+  SQUEEGEE SQUAD LA — Website Estimator Embed
+  ========================================================================
 
-          <label>
-            <span>Full Name <em>*</em></span>
-            <input type="text" name="Full Name" required autocomplete="name" />
-          </label>
+  WHAT THIS IS:
+    A self-contained, dependency-free estimator form. Customer fills it
+    out → submission POSTs to the n8n webhook → workflow logs to Google
+    Sheets and runs the pricing engine.
 
-          <label>
-            <span>Email <em>*</em></span>
-            <input type="email" name="Email" required autocomplete="email" />
-          </label>
+  HOW TO INTEGRATE (3 options):
 
-          <label>
-            <span>Phone Number <em>*</em></span>
-            <input type="tel" name="Phone Number" required autocomplete="tel" inputmode="numeric" />
-          </label>
-        </fieldset>
+    OPTION 1 — DROP-IN PAGE (easiest):
+      Upload this entire file to your site as e.g. /estimate.html and
+      link to it from your nav. Works immediately, no build step.
 
-        <fieldset>
-          <legend>Property</legend>
+    OPTION 2 — EMBED IN EXISTING PAGE:
+      Copy the three blocks below into your existing HTML page:
+        - <style id="ss-style">...</style>     → into your <head>
+        - <section id="ss-estimator">...</section>  → where you want
+          the form to appear
+        - <script id="ss-script">...</script>  → just before </body>
 
-          <label>
-            <span>ZIP Code <em>*</em></span>
-            <input type="number" name="ZIP Code" required placeholder="90046" autocomplete="postal-code" />
-          </label>
+    OPTION 3 — WORDPRESS / WIX / SQUARESPACE:
+      Use a "Custom HTML" / "Embed Code" block on your page and paste
+      the entire contents of this file into it.
 
-          <label>
-            <span>Property Address <small>(optional)</small></span>
-            <input type="text" name="Property Address (optional)" autocomplete="street-address" />
-          </label>
+  WEBHOOK URL (already wired below — do not change):
+    https://hu6j4d9e.rcld.app/webhook/0dc30588-9b5e-401e-b2c2-062d8c14831a
 
-          <label>
-            <span>Property Type <em>*</em></span>
-            <select name="Property Type" required>
-              <option value="" disabled selected>Select…</option>
+  CUSTOMIZING THE LOOK:
+    Tweak the CSS variables at the top of the <style> block (colors,
+    radii, font). Everything else cascades from those.
+  ========================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style id="ss-style">
+  /* ------------------------------------------------------------------
+     Design tokens — change these to match your brand
+     ------------------------------------------------------------------ */
+  :root {
+    --ss-primary:        #0e4f73;
+    --ss-primary-dark:   #073650;
+    --ss-accent:         #06b6d4;
+    --ss-accent-dark:    #0891b2;
+    --ss-accent-light:   #cffafe;
+    --ss-surface:        #ffffff;
+    --ss-canvas:         #f5f9fc;
+    --ss-ink:            #0f172a;
+    --ss-muted:          #64748b;
+    --ss-line:           #e2e8f0;
+    --ss-danger:         #dc2626;
+    --ss-success:        #059669;
+    --ss-success-light:  #d1fae5;
+    --ss-radius:         14px;
+    --ss-radius-lg:      20px;
+    --ss-font:           'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* ------------------------------------------------------------------
+     Layout
+     ------------------------------------------------------------------ */
+  #ss-estimator {
+    font-family: var(--ss-font);
+    color: var(--ss-ink);
+    background:
+      radial-gradient(circle at 0% 0%, rgba(6,182,212,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(14,79,115,0.05) 0%, transparent 55%),
+      linear-gradient(180deg, var(--ss-canvas) 0%, var(--ss-surface) 100%);
+    padding: 48px 16px;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  #ss-estimator * { box-sizing: border-box; }
+  .ss-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* ------------------------------------------------------------------
+     Header
+     ------------------------------------------------------------------ */
+  .ss-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .ss-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ss-primary);
+    background: linear-gradient(135deg, var(--ss-primary) 0%, var(--ss-accent-dark) 100%);
+    color: var(--ss-accent-light);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+  }
+  .ss-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--ss-accent);
+  }
+  .ss-header h1 {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+    color: var(--ss-ink);
+  }
+  .ss-header p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ss-muted);
+    max-width: 540px;
+    margin: 0 auto;
+  }
+
+  /* ------------------------------------------------------------------
+     Card
+     ------------------------------------------------------------------ */
+  .ss-card {
+    background: var(--ss-surface);
+    border: 1px solid rgba(226,232,240,0.7);
+    border-radius: var(--ss-radius-lg);
+    padding: 32px;
+    box-shadow:
+      0 1px 2px rgba(14,79,115,0.04),
+      0 4px 12px rgba(14,79,115,0.04),
+      0 24px 48px -12px rgba(14,79,115,0.08);
+  }
+  @media (max-width: 600px) {
+    #ss-estimator { padding: 24px 12px; }
+    .ss-card { padding: 20px; }
+  }
+
+  /* ------------------------------------------------------------------
+     Form fields
+     ------------------------------------------------------------------ */
+  .ss-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .ss-grid { grid-template-columns: 1fr; }
+  }
+  .ss-full { grid-column: 1 / -1; }
+
+  .ss-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ss-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ss-ink);
+  }
+  .ss-label .ss-req { color: var(--ss-danger); margin-left: 2px; }
+  .ss-hint {
+    font-size: 12px;
+    color: var(--ss-muted);
+  }
+
+  .ss-input,
+  .ss-select,
+  .ss-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--ss-ink);
+    background: var(--ss-surface);
+    border: 2px solid var(--ss-line);
+    border-radius: var(--ss-radius);
+    outline: none;
+    transition: all 0.2s ease;
+    min-height: 48px;
+  }
+  .ss-input:hover, .ss-select:hover, .ss-textarea:hover { border-color: #cbd5e1; }
+  .ss-input:focus,
+  .ss-select:focus,
+  .ss-textarea:focus {
+    border-color: var(--ss-accent);
+    box-shadow: 0 0 0 4px rgba(6,182,212,0.15);
+  }
+  .ss-textarea { min-height: 100px; resize: vertical; }
+  .ss-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px;
+    padding-right: 40px;
+  }
+  .ss-file {
+    padding: 10px 14px;
+    border: 2px dashed var(--ss-line);
+    border-radius: var(--ss-radius);
+    background: var(--ss-canvas);
+    font-size: 14px;
+    color: var(--ss-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .ss-file:hover { border-color: var(--ss-accent); background: var(--ss-accent-light); }
+  .ss-error {
+    border-color: var(--ss-danger);
+  }
+  .ss-error-msg {
+    font-size: 12px;
+    color: var(--ss-danger);
+    font-weight: 500;
+  }
+
+  /* ------------------------------------------------------------------
+     Section divider
+     ------------------------------------------------------------------ */
+  .ss-section-title {
+    grid-column: 1 / -1;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ss-primary);
+    padding-top: 8px;
+    padding-bottom: 4px;
+    border-top: 1px solid var(--ss-line);
+    margin-top: 8px;
+  }
+  .ss-section-title:first-of-type {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+  }
+
+  /* ------------------------------------------------------------------
+     Submit button
+     ------------------------------------------------------------------ */
+  .ss-submit {
+    width: 100%;
+    margin-top: 24px;
+    padding: 16px 24px;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, var(--ss-primary) 0%, var(--ss-accent-dark) 100%);
+    border: none;
+    border-radius: var(--ss-radius);
+    cursor: pointer;
+    min-height: 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow:
+      0 1px 2px rgba(14,79,115,0.15),
+      0 8px 20px -4px rgba(14,79,115,0.3);
+    transition: all 0.2s ease;
+  }
+  .ss-submit:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--ss-primary-dark) 0%, var(--ss-primary) 100%);
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 2px rgba(14,79,115,0.15),
+      0 12px 28px -4px rgba(14,79,115,0.4);
+  }
+  .ss-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .ss-submit .ss-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 999px;
+    animation: ss-spin 0.7s linear infinite;
+  }
+  @keyframes ss-spin { to { transform: rotate(360deg); } }
+
+  /* ------------------------------------------------------------------
+     Success / Error screens
+     ------------------------------------------------------------------ */
+  .ss-success, .ss-fail {
+    text-align: center;
+    padding: 56px 32px;
+  }
+  .ss-success .ss-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    border-radius: 999px;
+    background: var(--ss-success-light);
+    color: var(--ss-success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ss-fail .ss-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: var(--ss-danger);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ss-success h2, .ss-fail h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: var(--ss-ink);
+  }
+  .ss-success p, .ss-fail p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ss-muted);
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .ss-fail .ss-retry {
+    margin-top: 24px;
+    padding: 12px 24px;
+    background: var(--ss-primary);
+    color: white;
+    border: none;
+    border-radius: var(--ss-radius);
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* ------------------------------------------------------------------
+     Footer note
+     ------------------------------------------------------------------ */
+  .ss-footnote {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--ss-muted);
+  }
+</style>
+</head>
+
+<body>
+
+<section id="ss-estimator">
+  <div class="ss-wrap">
+
+    <header class="ss-header">
+      <span class="ss-eyebrow">Free Preliminary Estimate</span>
+      <h1>Tell us about your project</h1>
+      <p>Fill out the form and we'll send you a preliminary estimate range right away. Photos are optional — you can skip them and still receive an estimate.</p>
+    </header>
+
+    <div class="ss-card">
+
+      <!-- ================ THE FORM ================ -->
+      <form id="ss-form" novalidate>
+
+        <div class="ss-grid">
+
+          <div class="ss-section-title">Your Contact Info</div>
+
+          <div class="ss-field ss-full">
+            <label class="ss-label" for="ss-name">Full Name<span class="ss-req">*</span></label>
+            <input class="ss-input" id="ss-name" name="Full Name" type="text" required autocomplete="name">
+          </div>
+
+          <div class="ss-field">
+            <label class="ss-label" for="ss-email">Email<span class="ss-req">*</span></label>
+            <input class="ss-input" id="ss-email" name="Email" type="email" required autocomplete="email">
+          </div>
+
+          <div class="ss-field">
+            <label class="ss-label" for="ss-phone">Phone Number<span class="ss-req">*</span></label>
+            <input class="ss-input" id="ss-phone" name="Phone Number" type="tel" required autocomplete="tel" placeholder="(310) 555-0100">
+          </div>
+
+          <div class="ss-section-title">Property Details</div>
+
+          <div class="ss-field">
+            <label class="ss-label" for="ss-zip">ZIP Code<span class="ss-req">*</span></label>
+            <input class="ss-input" id="ss-zip" name="ZIP Code" type="text" inputmode="numeric" pattern="\d{5}" maxlength="5" required placeholder="90046">
+          </div>
+
+          <div class="ss-field">
+            <label class="ss-label" for="ss-address">Property Address</label>
+            <input class="ss-input" id="ss-address" name="Property Address (optional)" type="text" placeholder="Optional" autocomplete="street-address">
+          </div>
+
+          <div class="ss-field ss-full">
+            <label class="ss-label" for="ss-property-type">Property Type<span class="ss-req">*</span></label>
+            <select class="ss-select" id="ss-property-type" name="Property Type" required>
+              <option value="">Select one…</option>
               <option>Residential</option>
               <option>Commercial</option>
               <option>HOA/Multi-Unit</option>
               <option>Premium/Luxury</option>
             </select>
-          </label>
-        </fieldset>
+          </div>
 
-        <fieldset>
-          <legend>Service</legend>
+          <div class="ss-section-title">The Job</div>
 
-          <label>
-            <span>Service <em>*</em></span>
-            <select name="Service" required>
-              <option value="" disabled selected>Select a service…</option>
+          <div class="ss-field ss-full">
+            <label class="ss-label" for="ss-service">Service<span class="ss-req">*</span></label>
+            <select class="ss-select" id="ss-service" name="Service" required>
+              <option value="">Select a service…</option>
               <option>Residential Window Cleaning</option>
               <option>Large/Luxury Residential Windows</option>
               <option>Commercial Window Cleaning</option>
@@ -98,102 +458,224 @@
               <option>Trash Chute Cleaning</option>
               <option>Odor / Bacteria Treatment</option>
             </select>
-          </label>
+          </div>
 
-          <label>
-            <span>Quantity <em>*</em> <small>(panes, sq ft, panels, linear ft, loads — depends on service)</small></span>
-            <input
-              type="number"
-              name="Quantity (panes / sq ft / linear ft / panels / loads — depends on service)"
-              required
-              min="1"
-            />
-          </label>
+          <div class="ss-field ss-full">
+            <label class="ss-label" for="ss-qty">Approximate Quantity<span class="ss-req">*</span></label>
+            <input class="ss-input" id="ss-qty" name="Quantity (panes / sq ft / linear ft / panels / loads — depends on service)" type="number" min="0" step="1" required placeholder="e.g. 40">
+            <span class="ss-hint">Panes, square feet, linear feet, panels, or loads — whatever fits the service you picked.</span>
+          </div>
 
-          <label>
-            <span>Condition <em>*</em></span>
-            <select name="Condition" required>
-              <option value="" disabled selected>Select…</option>
+          <div class="ss-field">
+            <label class="ss-label" for="ss-condition">Condition<span class="ss-req">*</span></label>
+            <select class="ss-select" id="ss-condition" name="Condition" required>
+              <option value="">Select one…</option>
               <option>Standard</option>
               <option>Moderate buildup/staining</option>
               <option>Heavy buildup/staining</option>
               <option>Severe/restoration</option>
             </select>
-          </label>
+          </div>
 
-          <label>
-            <span>Access <em>*</em></span>
-            <select name="Access" required>
-              <option value="" disabled selected>Select…</option>
+          <div class="ss-field">
+            <label class="ss-label" for="ss-access">Access<span class="ss-req">*</span></label>
+            <select class="ss-select" id="ss-access" name="Access" required>
+              <option value="">Select one…</option>
               <option>Easy</option>
               <option>Moderate</option>
               <option>Difficult</option>
               <option>Height/Lift/Rope</option>
             </select>
-          </label>
+          </div>
 
-          <label>
-            <span>Urgency <em>*</em></span>
-            <select name="Urgency" required>
-              <option value="" disabled selected>Select…</option>
+          <div class="ss-field">
+            <label class="ss-label" for="ss-urgency">Urgency<span class="ss-req">*</span></label>
+            <select class="ss-select" id="ss-urgency" name="Urgency" required>
+              <option value="">Select one…</option>
               <option>Standard</option>
               <option>Same-week/Rush</option>
               <option>Night/Weekend</option>
             </select>
-          </label>
+          </div>
 
-          <label>
-            <span>LA Logistics <small>(optional)</small></span>
-            <select name="LA Logistics">
-              <option value="" selected>Skip</option>
+          <div class="ss-field">
+            <label class="ss-label" for="ss-logistics">LA Logistics</label>
+            <select class="ss-select" id="ss-logistics" name="LA Logistics">
+              <option value="">No special access</option>
               <option>None/Route-friendly</option>
               <option>Paid Parking/Loading</option>
               <option>DTLA/Dense Access</option>
               <option>Water Runoff/Containment</option>
               <option>Special Handling</option>
             </select>
-          </label>
+          </div>
 
-          <label>
-            <span>Recurring <small>(optional)</small></span>
-            <select name="Recurring">
-              <option value="" selected>Skip</option>
+          <div class="ss-field ss-full">
+            <label class="ss-label" for="ss-recurring">Recurring Service?</label>
+            <select class="ss-select" id="ss-recurring" name="Recurring">
+              <option value="">One-time only</option>
               <option>One-Time</option>
               <option>Monthly After First Clean</option>
               <option>Quarterly After First Clean</option>
             </select>
-          </label>
-        </fieldset>
+          </div>
 
-        <fieldset>
-          <legend>Photos &amp; notes</legend>
+          <div class="ss-section-title">Optional — Helps Us Quote You Faster</div>
 
-          <label>
-            <span>Photos <small>(optional — upload for a more accurate estimate)</small></span>
-            <input
-              type="file"
-              name="Photos (optional — upload for a more accurate estimate)"
-              accept="image/*"
-              multiple
-            />
-            <small class="muted">Skip and still receive a preliminary estimate.</small>
-          </label>
+          <div class="ss-field ss-full">
+            <label class="ss-label" for="ss-photos">Photos</label>
+            <input class="ss-file" id="ss-photos" name="Photos (optional — upload for a more accurate estimate)" type="file" accept="image/*" multiple>
+            <span class="ss-hint">Upload one or more site photos for a more accurate range. Optional.</span>
+          </div>
 
-          <label>
-            <span>Project Notes <small>(optional)</small></span>
-            <textarea name="Project Notes (optional)" rows="3" placeholder="Anything else we should know?"></textarea>
-          </label>
-        </fieldset>
+          <div class="ss-field ss-full">
+            <label class="ss-label" for="ss-notes">Project Notes</label>
+            <textarea class="ss-textarea" id="ss-notes" name="Project Notes (optional)" placeholder="Anything we should know? Best time to reach you, gate codes, special requests…"></textarea>
+          </div>
 
-        <button type="submit" id="submit-btn">Get my estimate</button>
-        <p class="muted disclaimer">
-          This is not a final quote. Final pricing may vary based on access, condition, photos, and team review.
-        </p>
+        </div>
+
+        <button class="ss-submit" type="submit" id="ss-submit-btn">
+          <span class="ss-submit-text">Send My Estimate Request</span>
+        </button>
+
       </form>
 
-      <section id="result" class="result hidden" aria-live="polite"></section>
-    </main>
+      <!-- ================ SUCCESS STATE ================ -->
+      <div class="ss-success" id="ss-success" hidden>
+        <div class="ss-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2>Thanks! We got it.</h2>
+        <p>We're working on your preliminary estimate now. You'll hear back from our team shortly with a range and next steps.</p>
+      </div>
 
-    <script src="./script.js"></script>
-  </body>
+      <!-- ================ ERROR STATE ================ -->
+      <div class="ss-fail" id="ss-fail" hidden>
+        <div class="ss-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <h2>Couldn't send your request</h2>
+        <p id="ss-fail-msg">Something went wrong on our end. Please try again, or give us a call.</p>
+        <button class="ss-retry" id="ss-retry-btn" type="button">Try Again</button>
+      </div>
+
+    </div>
+
+    <p class="ss-footnote">
+      Your estimate is preliminary. Final pricing is confirmed after a site review.
+    </p>
+
+  </div>
+</section>
+
+<script id="ss-script">
+(function () {
+  'use strict';
+
+  // ============================================================
+  //   CHANGE NOTHING ABOVE THIS LINE.
+  //   The webhook URL below is your live n8n production endpoint.
+  // ============================================================
+  var WEBHOOK_URL = 'https://hu6j4d9e.rcld.app/webhook/0dc30588-9b5e-401e-b2c2-062d8c14831a';
+
+  var form        = document.getElementById('ss-form');
+  var btn         = document.getElementById('ss-submit-btn');
+  var btnText     = btn.querySelector('.ss-submit-text');
+  var successEl   = document.getElementById('ss-success');
+  var failEl      = document.getElementById('ss-fail');
+  var failMsg     = document.getElementById('ss-fail-msg');
+  var retryBtn    = document.getElementById('ss-retry-btn');
+
+  function setSubmitting(yes) {
+    btn.disabled = yes;
+    if (yes) {
+      btnText.innerHTML = '<span class="ss-spinner"></span> Sending…';
+    } else {
+      btnText.textContent = 'Send My Estimate Request';
+    }
+  }
+
+  function showSuccess() {
+    form.hidden = true;
+    failEl.hidden = true;
+    successEl.hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showError(message) {
+    form.hidden = true;
+    successEl.hidden = true;
+    failEl.hidden = false;
+    if (message) failMsg.textContent = message;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetForm() {
+    failEl.hidden = true;
+    successEl.hidden = true;
+    form.hidden = false;
+  }
+
+  retryBtn.addEventListener('click', resetForm);
+
+  // Built-in form validation — highlight first invalid field
+  function validate() {
+    var firstInvalid = null;
+    var fields = form.querySelectorAll('input[required], select[required], textarea[required]');
+    fields.forEach(function (f) {
+      f.classList.remove('ss-error');
+      if (!f.checkValidity()) {
+        f.classList.add('ss-error');
+        if (!firstInvalid) firstInvalid = f;
+      }
+    });
+    if (firstInvalid) {
+      firstInvalid.focus();
+      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return false;
+    }
+    return true;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setSubmitting(true);
+
+    // Build a FormData payload from every named field on the form.
+    // The n8n webhook accepts multipart/form-data, which is what
+    // FormData produces natively — text fields land as their labels,
+    // file uploads as their labels.
+    var payload = new FormData(form);
+
+    fetch(WEBHOOK_URL, {
+      method: 'POST',
+      body: payload
+      // Note: do NOT set Content-Type manually — the browser sets the
+      // correct multipart boundary automatically when body is FormData.
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error('Server responded ' + res.status);
+        }
+        return res.text(); // n8n may return text or JSON; we don't need to parse
+      })
+      .then(function () {
+        showSuccess();
+      })
+      .catch(function (err) {
+        console.error('[Squeegee Estimator] submission failed:', err);
+        showError('We couldn’t send your request. Please try again, or call us directly.');
+      })
+      .finally(function () {
+        setSubmitting(false);
+      });
+  });
+
+})();
+</script>
+
+</body>
 </html>
