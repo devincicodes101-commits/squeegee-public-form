@@ -350,6 +350,42 @@
   }
 
   /* ------------------------------------------------------------------
+     Dynamic service-specific fields — hidden by default, slide in
+     when the chosen service needs them.
+     ------------------------------------------------------------------ */
+  .ss-dynamic {
+    display: none;
+    grid-column: 1 / -1;
+  }
+  .ss-dynamic.is-active {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    animation: ss-fadein 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @media (max-width: 600px) {
+    .ss-dynamic.is-active { grid-template-columns: 1fr; }
+  }
+  @keyframes ss-fadein {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  /* Hint pill that shows next to the quantity label when it morphs */
+  .ss-morph-pill {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--ss-accent-light);
+    color: var(--ss-accent-dark);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* ------------------------------------------------------------------
      Footer note
      ------------------------------------------------------------------ */
   .ss-footnote {
@@ -461,9 +497,107 @@
           </div>
 
           <div class="ss-field ss-full">
-            <label class="ss-label" for="ss-qty">Approximate Quantity<span class="ss-req">*</span></label>
+            <label class="ss-label" for="ss-qty">
+              <span id="ss-qty-label">Approximate Quantity</span><span class="ss-req">*</span>
+              <span class="ss-morph-pill" id="ss-qty-pill" hidden></span>
+            </label>
             <input class="ss-input" id="ss-qty" name="Quantity (panes / sq ft / linear ft / panels / loads — depends on service)" type="number" min="0" step="1" required placeholder="e.g. 40">
-            <span class="ss-hint">Panes, square feet, linear feet, panels, or loads — whatever fits the service you picked.</span>
+            <span class="ss-hint" id="ss-qty-hint">Panes, square feet, linear feet, panels, or loads — whatever fits the service you picked.</span>
+          </div>
+
+          <!-- ============== DYNAMIC SERVICE-SPECIFIC FIELDS ============== -->
+          <!-- Hidden by default. JS toggles `is-active` based on service. -->
+
+          <!-- Stories (windows, gutters, building wash, solar) -->
+          <div class="ss-dynamic" data-dyn="stories">
+            <div class="ss-field ss-full">
+              <label class="ss-label" for="ss-stories">How many stories?</label>
+              <select class="ss-select" id="ss-stories" name="Stories" disabled>
+                <option value="">Select…</option>
+                <option>1 story</option>
+                <option>2 stories</option>
+                <option>3 stories</option>
+                <option>4+ stories</option>
+              </select>
+              <span class="ss-hint">Helps us factor in height/access.</span>
+            </div>
+          </div>
+
+          <!-- Trash Chute extras: number of chutes -->
+          <div class="ss-dynamic" data-dyn="trashchute">
+            <div class="ss-field ss-full">
+              <label class="ss-label" for="ss-chutes">Number of chutes<span class="ss-req">*</span></label>
+              <input class="ss-input" id="ss-chutes" name="Number of Chutes (Trash Chute Cleaning only)" type="number" min="0" step="1" placeholder="e.g. 2" disabled>
+              <span class="ss-hint">Total chutes that need cleaning.</span>
+            </div>
+          </div>
+
+          <!-- Parking Garage extras: spaces + levels -->
+          <div class="ss-dynamic" data-dyn="parking">
+            <div class="ss-field">
+              <label class="ss-label" for="ss-spaces">Parking spaces</label>
+              <input class="ss-input" id="ss-spaces" name="Spaces (Parking Garage only)" type="number" min="0" step="1" placeholder="e.g. 200" disabled>
+            </div>
+            <div class="ss-field">
+              <label class="ss-label" for="ss-levels">Levels</label>
+              <input class="ss-input" id="ss-levels" name="Levels (Parking Garage only)" type="number" min="0" step="1" placeholder="e.g. 3" disabled>
+            </div>
+          </div>
+
+          <!-- Post-Construction extras: cleaning phase -->
+          <div class="ss-dynamic" data-dyn="construction">
+            <div class="ss-field ss-full">
+              <label class="ss-label" for="ss-phase">Cleaning phase</label>
+              <select class="ss-select" id="ss-phase" name="Cleaning Phase (Post-Construction only)" disabled>
+                <option value="">Select…</option>
+                <option>Rough (early-stage debris)</option>
+                <option>Final (detailed turnover clean)</option>
+                <option>Touch-up (post-walkthrough)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Cleanouts extras: debris level -->
+          <div class="ss-dynamic" data-dyn="cleanouts">
+            <div class="ss-field ss-full">
+              <label class="ss-label" for="ss-debris">Debris level</label>
+              <select class="ss-select" id="ss-debris" name="Debris Level (Cleanouts only)" disabled>
+                <option value="">Select…</option>
+                <option>Light (few items, easy haul)</option>
+                <option>Moderate (full room or two)</option>
+                <option>Heavy (whole property / hoarder)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Oil Stain / Graffiti extras: severity -->
+          <div class="ss-dynamic" data-dyn="severity">
+            <div class="ss-field ss-full">
+              <label class="ss-label" for="ss-severity">Severity</label>
+              <select class="ss-select" id="ss-severity" name="Severity" disabled>
+                <option value="">Select…</option>
+                <option>Light</option>
+                <option>Moderate</option>
+                <option>Heavy</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Graffiti extras: surface type -->
+          <div class="ss-dynamic" data-dyn="surface">
+            <div class="ss-field ss-full">
+              <label class="ss-label" for="ss-surface">Surface type</label>
+              <select class="ss-select" id="ss-surface" name="Surface Type" disabled>
+                <option value="">Select…</option>
+                <option>Brick</option>
+                <option>Concrete</option>
+                <option>Stucco</option>
+                <option>Wood</option>
+                <option>Glass</option>
+                <option>Metal</option>
+                <option>Painted</option>
+              </select>
+            </div>
           </div>
 
           <div class="ss-field">
@@ -588,6 +722,123 @@
   var failEl      = document.getElementById('ss-fail');
   var failMsg     = document.getElementById('ss-fail-msg');
   var retryBtn    = document.getElementById('ss-retry-btn');
+
+  // ============================================================
+  //   DYNAMIC FIELD CONFIG — per-service field morphing.
+  //
+  //   For each service, define:
+  //     - qtyLabel   : label shown on the quantity field
+  //     - qtyHint    : helper text below the input
+  //     - qtyPill    : small badge next to label (Unit hint)
+  //     - placeholder: example value
+  //     - extras     : array of dynamic-field group keys to show
+  //                    (matches data-dyn attributes in the HTML)
+  // ============================================================
+  var SERVICE_CONFIG = {
+    // ----- Windows -----
+    'Residential Window Cleaning':      { qtyLabel: 'Number of window panes',  qtyHint: 'Approximate count of panes to clean.',    qtyPill: 'panes', placeholder: 'e.g. 30',   extras: ['stories'] },
+    'Large/Luxury Residential Windows': { qtyLabel: 'Number of window panes',  qtyHint: 'Approximate count of panes to clean.',    qtyPill: 'panes', placeholder: 'e.g. 60',   extras: ['stories'] },
+    'Commercial Window Cleaning':       { qtyLabel: 'Number of window panes',  qtyHint: 'Approximate count of panes to clean.',    qtyPill: 'panes', placeholder: 'e.g. 100',  extras: ['stories'] },
+    'High-Access/Lift Window Cleaning': { qtyLabel: 'Number of window panes',  qtyHint: 'Approximate count of panes to clean.',    qtyPill: 'panes', placeholder: 'e.g. 80',   extras: ['stories'] },
+    'Storefront Glass Cleaning':        { qtyLabel: 'Number of window panes',  qtyHint: 'Approximate count of panes/storefronts.', qtyPill: 'panes', placeholder: 'e.g. 12',   extras: [] },
+    'Recurring Storefront Glass':       { qtyLabel: 'Number of window panes',  qtyHint: 'Approximate count of panes/storefronts.', qtyPill: 'panes', placeholder: 'e.g. 12',   extras: [] },
+
+    // ----- Pressure washing & soft wash -----
+    'Residential Pressure Washing':     { qtyLabel: 'Square footage',         qtyHint: 'Approximate area to clean.', qtyPill: 'sq ft', placeholder: 'e.g. 800',  extras: [] },
+    'Commercial Pressure Washing':      { qtyLabel: 'Square footage',         qtyHint: 'Approximate area to clean.', qtyPill: 'sq ft', placeholder: 'e.g. 5000', extras: [] },
+    'Common Area Pressure Washing':     { qtyLabel: 'Square footage',         qtyHint: 'Approximate area to clean.', qtyPill: 'sq ft', placeholder: 'e.g. 3000', extras: [] },
+    'Building Washing / Soft Washing':  { qtyLabel: 'Square footage of facade', qtyHint: 'Approximate facade area.', qtyPill: 'sq ft', placeholder: 'e.g. 6000', extras: ['stories'] },
+    'Sidewalks / Lots / Walkways':      { qtyLabel: 'Square footage',         qtyHint: 'Approximate area to clean.', qtyPill: 'sq ft', placeholder: 'e.g. 2000', extras: [] },
+    'Slip Hazard Removal':              { qtyLabel: 'Square footage',         qtyHint: 'Approximate area treated.',   qtyPill: 'sq ft', placeholder: 'e.g. 500',  extras: [] },
+
+    // ----- Specialty cleaning -----
+    'Oil Stain Removal / Degreasing':   { qtyLabel: 'Square footage',         qtyHint: 'Approximate stained area.',   qtyPill: 'sq ft', placeholder: 'e.g. 300',  extras: ['severity'] },
+    'Graffiti Removal':                 { qtyLabel: 'Square footage',         qtyHint: 'Approximate graffiti area.',  qtyPill: 'sq ft', placeholder: 'e.g. 100',  extras: ['severity', 'surface'] },
+    'Awning Cleaning':                  { qtyLabel: 'Number of awnings',      qtyHint: 'Count of awnings to clean.',  qtyPill: 'awnings', placeholder: 'e.g. 4',  extras: [] },
+
+    // ----- Solar & gutters -----
+    'Solar Panel Cleaning':             { qtyLabel: 'Number of solar panels', qtyHint: 'Count of panels to clean.',   qtyPill: 'panels', placeholder: 'e.g. 24', extras: ['stories'] },
+    'Gutter Cleaning':                  { qtyLabel: 'Linear feet of gutters', qtyHint: 'Approximate gutter length.',  qtyPill: 'linear ft', placeholder: 'e.g. 120', extras: ['stories'] },
+
+    // ----- Industrial -----
+    'Loading Dock Cleaning':            { qtyLabel: 'Number of loading docks',  qtyHint: 'Count of docks to clean.',  qtyPill: 'docks',  placeholder: 'e.g. 4',    extras: [] },
+    'Warehouse Cleaning':               { qtyLabel: 'Square footage',           qtyHint: 'Approximate floor area.',   qtyPill: 'sq ft',  placeholder: 'e.g. 20000', extras: [] },
+
+    // ----- Specialty surfaces -----
+    'Tennis / Specialty Surface Cleaning': { qtyLabel: 'Square footage', qtyHint: 'Approximate surface area.', qtyPill: 'sq ft', placeholder: 'e.g. 7000', extras: [] },
+    'Kitchen Hood Cleaning':            { qtyLabel: 'Hood length (linear ft)',  qtyHint: 'Approximate hood length.',  qtyPill: 'linear ft', placeholder: 'e.g. 12', extras: [] },
+    'Dog Park / Turf Cleaning':         { qtyLabel: 'Square footage',           qtyHint: 'Approximate turf area.',    qtyPill: 'sq ft',  placeholder: 'e.g. 3000', extras: [] },
+    'Restaurant Exterior Sanitation':   { qtyLabel: 'Square footage',           qtyHint: 'Approximate area to sanitize.', qtyPill: 'sq ft', placeholder: 'e.g. 1500', extras: [] },
+    'Odor / Bacteria Treatment':        { qtyLabel: 'Square footage',           qtyHint: 'Approximate treated area.', qtyPill: 'sq ft',  placeholder: 'e.g. 1000', extras: [] },
+
+    // ----- Parking garage -----
+    'Parking Garage Deep Cleaning':     { qtyLabel: 'Square footage',           qtyHint: 'Approximate floor area.',   qtyPill: 'sq ft',  placeholder: 'e.g. 5000', extras: ['parking'] },
+
+    // ----- Junk & cleanouts -----
+    'Junk Removal':                     { qtyLabel: 'Truckloads',               qtyHint: 'Approximate truckloads of junk.', qtyPill: 'loads', placeholder: 'e.g. 1', extras: [] },
+    'Large Junk Removal':               { qtyLabel: 'Truckloads',               qtyHint: 'Approximate truckloads of junk.', qtyPill: 'loads', placeholder: 'e.g. 2', extras: [] },
+    'Eviction / Turnover Cleanouts':    { qtyLabel: 'Square footage of property', qtyHint: 'Approximate property size.', qtyPill: 'sq ft', placeholder: 'e.g. 1200', extras: ['cleanouts'] },
+    'Property Cleanouts':               { qtyLabel: 'Square footage of property', qtyHint: 'Approximate property size.', qtyPill: 'sq ft', placeholder: 'e.g. 1500', extras: ['cleanouts'] },
+
+    // ----- Construction -----
+    'Post-Construction Cleanup':        { qtyLabel: 'Square footage',           qtyHint: 'Approximate floor area.',   qtyPill: 'sq ft',  placeholder: 'e.g. 5000', extras: ['construction'] },
+
+    // ----- Trash/dumpster -----
+    'Dumpster Pad Sanitization':        { qtyLabel: 'Number of dumpsters',      qtyHint: 'Count of dumpsters/pads to clean.', qtyPill: 'units', placeholder: 'e.g. 2', extras: [] },
+    'Trash Area Cleaning':              { qtyLabel: 'Number of trash areas',    qtyHint: 'Count of trash zones.',     qtyPill: 'units', placeholder: 'e.g. 1', extras: [] },
+    'Trash Chute Cleaning':             { qtyLabel: 'Number of floors',         qtyHint: 'Total floors of the building.', qtyPill: 'floors', placeholder: 'e.g. 10', extras: ['trashchute'] }
+  };
+
+  var serviceSelect = document.getElementById('ss-service');
+  var qtyLabel      = document.getElementById('ss-qty-label');
+  var qtyHint       = document.getElementById('ss-qty-hint');
+  var qtyPill       = document.getElementById('ss-qty-pill');
+  var qtyInput      = document.getElementById('ss-qty');
+  var dynamicGroups = document.querySelectorAll('.ss-dynamic');
+
+  /**
+   * Update the quantity label/hint/placeholder and toggle which
+   * dynamic field groups are visible whenever the service changes.
+   */
+  function handleServiceChange() {
+    var svc = serviceSelect.value;
+    var cfg = SERVICE_CONFIG[svc];
+
+    if (!cfg) {
+      // No service selected yet — show generic copy
+      qtyLabel.textContent = 'Approximate Quantity';
+      qtyHint.textContent = 'Panes, square feet, linear feet, panels, or loads — whatever fits the service you picked.';
+      qtyInput.placeholder = 'e.g. 40';
+      qtyPill.hidden = true;
+    } else {
+      qtyLabel.textContent = cfg.qtyLabel;
+      qtyHint.textContent = cfg.qtyHint;
+      qtyInput.placeholder = cfg.placeholder;
+      if (cfg.qtyPill) {
+        qtyPill.textContent = cfg.qtyPill;
+        qtyPill.hidden = false;
+      } else {
+        qtyPill.hidden = true;
+      }
+    }
+
+    // Toggle each dynamic group on/off + enable/disable its inputs so
+    // disabled (hidden) fields don't get sent to the webhook.
+    var activeKeys = (cfg && cfg.extras) || [];
+    dynamicGroups.forEach(function (group) {
+      var key = group.getAttribute('data-dyn');
+      var on  = activeKeys.indexOf(key) !== -1;
+      group.classList.toggle('is-active', on);
+      group.querySelectorAll('input, select, textarea').forEach(function (el) {
+        el.disabled = !on;
+        if (!on) el.value = ''; // clear hidden field values so stale data doesn't ship
+      });
+    });
+  }
+
+  serviceSelect.addEventListener('change', handleServiceChange);
+  // Run once on load in case browser autofills a value
+  handleServiceChange();
 
   function setSubmitting(yes) {
     btn.disabled = yes;
