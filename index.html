@@ -350,6 +350,85 @@
   }
 
   /* ------------------------------------------------------------------
+     Price-range success card
+     ------------------------------------------------------------------ */
+  .ss-price-card {
+    background: linear-gradient(135deg, var(--ss-primary) 0%, var(--ss-accent-dark) 100%);
+    border-radius: var(--ss-radius-lg);
+    padding: 28px 24px;
+    margin: 20px auto 24px;
+    max-width: 480px;
+    color: white;
+    text-align: center;
+    box-shadow:
+      0 8px 24px -4px rgba(14,79,115,0.3),
+      0 16px 48px -8px rgba(14,79,115,0.2);
+  }
+  .ss-price-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ss-accent-light);
+    opacity: 0.9;
+    margin-bottom: 12px;
+  }
+  .ss-price-range {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 12px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .ss-price-low, .ss-price-high {
+    font-size: clamp(32px, 6vw, 48px);
+  }
+  .ss-price-dash {
+    font-size: clamp(24px, 4vw, 32px);
+    opacity: 0.5;
+    font-weight: 400;
+  }
+  .ss-price-meta {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  .ss-confidence-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(4px);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .ss-confidence-pill::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--ss-accent);
+  }
+  .ss-confidence-pill.is-high::before    { background: #34d399; }
+  .ss-confidence-pill.is-medium::before  { background: #fbbf24; }
+  .ss-confidence-pill.is-low::before     { background: #f87171; }
+  .ss-price-reasoning {
+    margin: 14px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.85);
+    font-style: italic;
+  }
+
+  /* ------------------------------------------------------------------
      Dynamic service-specific fields — hidden by default, slide in
      when the chosen service needs them.
      ------------------------------------------------------------------ */
@@ -680,8 +759,24 @@
         <div class="ss-icon">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h2>Thanks! We got it.</h2>
-        <p>We're working on your preliminary estimate now. You'll hear back from our team shortly with a range and next steps.</p>
+        <h2>Your preliminary estimate</h2>
+
+        <!-- Price range card — populated from n8n response. Hidden if no price data came back. -->
+        <div class="ss-price-card" id="ss-price-card" hidden>
+          <div class="ss-price-eyebrow">Estimated range</div>
+          <div class="ss-price-range">
+            <span class="ss-price-low" id="ss-price-low">$0</span>
+            <span class="ss-price-dash">–</span>
+            <span class="ss-price-high" id="ss-price-high">$0</span>
+          </div>
+          <div class="ss-price-meta">
+            <span class="ss-confidence-pill" id="ss-confidence-pill">Medium confidence</span>
+          </div>
+          <p class="ss-price-reasoning" id="ss-price-reasoning" hidden></p>
+        </div>
+
+        <!-- Always visible — the "what happens next" text -->
+        <p id="ss-success-msg">A member of our team will reach out shortly to confirm scope and schedule a site visit. Your final price is confirmed after that review.</p>
       </div>
 
       <!-- ================ ERROR STATE ================ -->
@@ -849,7 +944,53 @@
     }
   }
 
-  function showSuccess() {
+  /**
+   * Show the success screen, optionally populating the price-range card
+   * from the n8n webhook response.
+   *
+   * Expected `data` shape (from the n8n Respond JSON node):
+   *   { ok, estimate, leadId, range: { low, high }, confidence, ai_used, ai_reasoning }
+   *
+   * Falls back gracefully if any field is missing — the card just stays hidden
+   * and the user sees the generic thank-you message.
+   */
+  function showSuccess(data) {
+    var card = document.getElementById('ss-price-card');
+    var lowEl = document.getElementById('ss-price-low');
+    var highEl = document.getElementById('ss-price-high');
+    var pill = document.getElementById('ss-confidence-pill');
+    var reason = document.getElementById('ss-price-reasoning');
+    var msg = document.getElementById('ss-success-msg');
+
+    var hasRange = data && data.range
+      && typeof data.range.low === 'number'
+      && typeof data.range.high === 'number';
+
+    if (hasRange) {
+      lowEl.textContent  = '$' + data.range.low.toLocaleString();
+      highEl.textContent = '$' + data.range.high.toLocaleString();
+
+      var conf = (data.confidence || 'Medium');
+      pill.textContent = conf + ' confidence';
+      pill.classList.remove('is-high', 'is-medium', 'is-low');
+      pill.classList.add('is-' + conf.toLowerCase());
+
+      // Show AI reasoning only when the AI actually analyzed photos.
+      if (data.ai_used && data.ai_reasoning) {
+        reason.textContent = '"' + data.ai_reasoning + '"';
+        reason.hidden = false;
+      } else {
+        reason.hidden = true;
+      }
+
+      card.hidden = false;
+      msg.textContent = 'A member of our team will reach out shortly to confirm scope and schedule a site visit. Your final price is confirmed after that review.';
+    } else {
+      // Webhook responded but with no price data — fall back to generic thank-you
+      card.hidden = true;
+      msg.textContent = "We're working on your preliminary estimate now. You'll hear back from our team shortly with a range and next steps.";
+    }
+
     form.hidden = true;
     failEl.hidden = true;
     successEl.hidden = false;
@@ -923,10 +1064,14 @@
             throw new Error('Server responded ' + res.status + ': ' + body.slice(0, 300));
           });
         }
-        return res.text();
+        // Try JSON first; if the body isn't valid JSON, fall back to a generic
+        // success object so the user still sees the thank-you state.
+        return res.text().then(function (text) {
+          try { return JSON.parse(text); } catch (e) { return { ok: true }; }
+        });
       })
-      .then(function () {
-        showSuccess();
+      .then(function (data) {
+        showSuccess(data);
       })
       .catch(function (err) {
         console.error('[Squeegee Estimator] submission failed:', err);
