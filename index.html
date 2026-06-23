@@ -43,29 +43,31 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 
 <style id="ss-style">
   /* ------------------------------------------------------------------
-     Design tokens — change these to match your brand
+     Squeegee Squad LA brand tokens
      ------------------------------------------------------------------ */
   :root {
-    --ss-primary:        #0e4f73;
-    --ss-primary-dark:   #073650;
-    --ss-accent:         #06b6d4;
-    --ss-accent-dark:    #0891b2;
-    --ss-accent-light:   #cffafe;
+    --ss-primary:        #1E50A2;   /* Squeegee Squad royal blue */
+    --ss-primary-dark:   #143A78;   /* darker blue for hover */
+    --ss-primary-darker: #0F2E5F;   /* deepest blue for footer/contrast */
+    --ss-accent:         #EF5A19;   /* Squeegee Squad orange CTA */
+    --ss-accent-dark:    #D14A11;   /* darker orange for hover */
+    --ss-accent-light:   #FFE5D9;   /* peach tint for backgrounds */
     --ss-surface:        #ffffff;
-    --ss-canvas:         #f5f9fc;
-    --ss-ink:            #0f172a;
-    --ss-muted:          #64748b;
-    --ss-line:           #e2e8f0;
+    --ss-canvas:         #f4f7fb;   /* soft blue-tinted canvas */
+    --ss-ink:            #0F2E5F;   /* deep blue ink — matches brand */
+    --ss-muted:          #5d6b80;
+    --ss-line:           #d8e1ee;
     --ss-danger:         #dc2626;
     --ss-success:        #059669;
     --ss-success-light:  #d1fae5;
-    --ss-radius:         14px;
-    --ss-radius-lg:      20px;
+    --ss-radius:         12px;
+    --ss-radius-lg:      18px;
     --ss-font:           'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --ss-display:        'Oswald', 'Inter', system-ui, sans-serif;
   }
 
   /* ------------------------------------------------------------------
@@ -75,10 +77,10 @@
     font-family: var(--ss-font);
     color: var(--ss-ink);
     background:
-      radial-gradient(circle at 0% 0%, rgba(6,182,212,0.06) 0%, transparent 50%),
-      radial-gradient(circle at 100% 100%, rgba(14,79,115,0.05) 0%, transparent 55%),
+      radial-gradient(circle at 0% 0%, rgba(30,80,162,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(239,90,25,0.05) 0%, transparent 55%),
       linear-gradient(180deg, var(--ss-canvas) 0%, var(--ss-surface) 100%);
-    padding: 48px 16px;
+    padding: 0 0 48px;
     min-height: 100vh;
     box-sizing: border-box;
   }
@@ -86,6 +88,79 @@
   .ss-wrap {
     max-width: 720px;
     margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  /* ------------------------------------------------------------------
+     Squeegee Squad brand bar (top of page)
+     ------------------------------------------------------------------ */
+  .ss-brandbar {
+    width: 100%;
+    background: var(--ss-primary);
+    padding: 18px 16px;
+    margin-bottom: 40px;
+    box-shadow: 0 2px 12px rgba(15,46,95,0.15);
+  }
+  .ss-brandbar-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .ss-logo {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    line-height: 1;
+    text-decoration: none;
+  }
+  .ss-logo-mark {
+    font-family: var(--ss-display);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ss-logo-mark .ss-y {
+    color: var(--ss-accent);
+    display: inline-block;
+    transform: translateY(1px);
+    font-size: 30px;
+  }
+  .ss-logo-sub {
+    font-family: var(--ss-display);
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: var(--ss-accent);
+    text-transform: uppercase;
+    padding-left: 2px;
+  }
+  .ss-brandbar-phone {
+    font-family: var(--ss-display);
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    text-decoration: none;
+    background: var(--ss-accent);
+    padding: 9px 16px;
+    border-radius: 999px;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+  }
+  .ss-brandbar-phone:hover { background: var(--ss-accent-dark); }
+  @media (max-width: 480px) {
+    .ss-brandbar-phone { font-size: 14px; padding: 8px 12px; }
+    .ss-logo-mark { font-size: 22px; }
+    .ss-logo-mark .ss-y { font-size: 26px; }
   }
 
   /* ------------------------------------------------------------------
@@ -99,16 +174,17 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: var(--ss-primary);
-    background: linear-gradient(135deg, var(--ss-primary) 0%, var(--ss-accent-dark) 100%);
-    color: var(--ss-accent-light);
+    background: var(--ss-accent);
+    color: #ffffff;
+    font-family: var(--ss-display);
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    padding: 8px 14px;
+    padding: 8px 16px;
     border-radius: 999px;
     margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(239,90,25,0.25);
   }
   .ss-eyebrow::before {
     content: '';
@@ -116,14 +192,17 @@
     width: 6px;
     height: 6px;
     border-radius: 999px;
-    background: var(--ss-accent);
+    background: #ffffff;
   }
   .ss-header h1 {
-    font-size: clamp(28px, 4vw, 40px);
+    font-family: var(--ss-display);
+    font-size: clamp(32px, 5vw, 46px);
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
     margin: 0 0 12px;
     color: var(--ss-ink);
+    line-height: 1.05;
   }
   .ss-header p {
     font-size: 15px;
@@ -199,8 +278,8 @@
   .ss-input:focus,
   .ss-select:focus,
   .ss-textarea:focus {
-    border-color: var(--ss-accent);
-    box-shadow: 0 0 0 4px rgba(6,182,212,0.15);
+    border-color: var(--ss-primary);
+    box-shadow: 0 0 0 4px rgba(30,80,162,0.15);
   }
   .ss-textarea { min-height: 100px; resize: vertical; }
   .ss-select {
@@ -221,7 +300,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
   }
-  .ss-file:hover { border-color: var(--ss-accent); background: var(--ss-accent-light); }
+  .ss-file:hover { border-color: var(--ss-primary); background: var(--ss-accent-light); }
   .ss-error {
     border-color: var(--ss-danger);
   }
@@ -236,14 +315,15 @@
      ------------------------------------------------------------------ */
   .ss-section-title {
     grid-column: 1 / -1;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
+    font-family: var(--ss-display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--ss-primary);
     padding-top: 8px;
     padding-bottom: 4px;
-    border-top: 1px solid var(--ss-line);
+    border-top: 2px solid var(--ss-accent);
     margin-top: 8px;
   }
   .ss-section-title:first-of-type {
@@ -259,13 +339,15 @@
     width: 100%;
     margin-top: 24px;
     padding: 16px 24px;
-    font-family: inherit;
-    font-size: 16px;
+    font-family: var(--ss-display);
+    font-size: 17px;
     font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: white;
-    background: linear-gradient(135deg, var(--ss-primary) 0%, var(--ss-accent-dark) 100%);
+    background: var(--ss-accent);
     border: none;
-    border-radius: var(--ss-radius);
+    border-radius: 999px;
     cursor: pointer;
     min-height: 56px;
     display: inline-flex;
@@ -273,16 +355,16 @@
     justify-content: center;
     gap: 10px;
     box-shadow:
-      0 1px 2px rgba(14,79,115,0.15),
-      0 8px 20px -4px rgba(14,79,115,0.3);
+      0 1px 2px rgba(239,90,25,0.2),
+      0 8px 20px -4px rgba(239,90,25,0.35);
     transition: all 0.2s ease;
   }
   .ss-submit:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--ss-primary-dark) 0%, var(--ss-primary) 100%);
+    background: var(--ss-accent-dark);
     transform: translateY(-1px);
     box-shadow:
-      0 1px 2px rgba(14,79,115,0.15),
-      0 12px 28px -4px rgba(14,79,115,0.4);
+      0 1px 2px rgba(239,90,25,0.2),
+      0 12px 28px -4px rgba(239,90,25,0.45);
   }
   .ss-submit:disabled { opacity: 0.6; cursor: not-allowed; }
   .ss-submit .ss-spinner {
@@ -340,37 +422,48 @@
   .ss-fail .ss-retry {
     margin-top: 24px;
     padding: 12px 24px;
-    background: var(--ss-primary);
+    background: var(--ss-accent);
     color: white;
     border: none;
-    border-radius: var(--ss-radius);
+    border-radius: 999px;
     font-weight: 600;
+    font-family: var(--ss-display);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     cursor: pointer;
-    font-family: inherit;
   }
 
   /* ------------------------------------------------------------------
      Price-range success card
      ------------------------------------------------------------------ */
   .ss-price-card {
-    background: linear-gradient(135deg, var(--ss-primary) 0%, var(--ss-accent-dark) 100%);
+    background: linear-gradient(135deg, var(--ss-primary) 0%, var(--ss-primary-darker) 100%);
     border-radius: var(--ss-radius-lg);
     padding: 28px 24px;
     margin: 20px auto 24px;
     max-width: 480px;
     color: white;
     text-align: center;
+    position: relative;
+    overflow: hidden;
     box-shadow:
-      0 8px 24px -4px rgba(14,79,115,0.3),
-      0 16px 48px -8px rgba(14,79,115,0.2);
+      0 8px 24px -4px rgba(15,46,95,0.35),
+      0 16px 48px -8px rgba(15,46,95,0.25);
+  }
+  .ss-price-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--ss-accent);
   }
   .ss-price-eyebrow {
+    font-family: var(--ss-display);
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.18em;
+    font-weight: 600;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--ss-accent-light);
-    opacity: 0.9;
+    color: var(--ss-accent);
     margin-bottom: 12px;
   }
   .ss-price-range {
@@ -378,12 +471,13 @@
     align-items: baseline;
     justify-content: center;
     gap: 12px;
+    font-family: var(--ss-display);
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.01em;
     line-height: 1.1;
   }
   .ss-price-low, .ss-price-high {
-    font-size: clamp(32px, 6vw, 48px);
+    font-size: clamp(34px, 6vw, 52px);
   }
   .ss-price-dash {
     font-size: clamp(24px, 4vw, 32px);
@@ -415,7 +509,7 @@
     width: 6px;
     height: 6px;
     border-radius: 999px;
-    background: var(--ss-accent);
+    background: #ffffff;
   }
   .ss-confidence-pill.is-high::before    { background: #34d399; }
   .ss-confidence-pill.is-medium::before  { background: #fbbf24; }
@@ -479,6 +573,18 @@
 <body>
 
 <section id="ss-estimator">
+
+  <!-- Squeegee Squad brand bar — swap .ss-logo-mark for an <img src="..."> if you want to use the actual hosted logo image -->
+  <div class="ss-brandbar">
+    <div class="ss-brandbar-inner">
+      <a class="ss-logo" href="https://squeegeesquad.com/los-angeles-ca/" aria-label="Squeegee Squad Los Angeles home">
+        <span class="ss-logo-mark">SQUEEGEE<span class="ss-y">Y</span>SQUAD</span>
+        <span class="ss-logo-sub">Los Angeles</span>
+      </a>
+      <a class="ss-brandbar-phone" href="tel:+13232089717">(323) 208-9717</a>
+    </div>
+  </div>
+
   <div class="ss-wrap">
 
     <header class="ss-header">
